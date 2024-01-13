@@ -1,4 +1,4 @@
-name: Docker build and deploy to Kubernetes
+name: Build the Docker image and deploy it to Kubernetes
 
 on: workflow_dispatch
 
@@ -23,8 +23,8 @@ jobs:
       - name: Login to DockerHub registry
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.REG_USERNAME }}
-          password: ${{ secrets.REG_PASSWORD }}
+          username: madej22
+          password: ${{ secrets.CHMURY_Z2_TOKEN }}
 
       - name: Build and push Docker image
         id: docker_build
@@ -34,12 +34,10 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           file: ./Dockerfile
           push: true
-          tags: '${{ vars.DOCKER_IMAGE }}:${{ vars.APP_VERSION }}'
+          tags: 'madej22/chmury_z2_image:${{ vars.APPVER }}'
           labels: ${{ steps.meta.output.labels }}
           build-args: |
-            APP_VERSION=${{ vars.APP_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            APPVER=${{ vars.APPVER }}
 
   kubernetesCI:
 
@@ -52,18 +50,12 @@ jobs:
         with:
           repository: madej22/config_repo_chmury
           ref: main
-          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+          token: ${{ secrets.CHMURY_Z2_GH }}
       
-      - name: Configure Git
+      - name: Configure Git variables, change tag and push to repo
         run: |
-          git config user.name '${{ vars.GIT_USERNAME }}'
-          git config user.email '${{ vars.GIT_EMAIL }}'
-      
-      - name: Update image tag
-        run: |
-          sed -i 's|image: ${{ vars.DOCKER_IMAGE }}:.*|image: ${{ vars.DOCKER_IMAGE }}:${{ vars.APP_VERSION }}|g' ./deployment.yaml
-
-      - name: Commit and push to repo
-        run: |
-          git diff --quiet && git diff --staged --quiet || git commit -am 'cloud app updated to version: ${{ vars.APP_VERSION }}'
+          git config user.name 'madej22'
+          git config user.email 'kacper.madejczyk@pollub.edu.pl'
+          sed -i 's|image: madej22/chmury_z2_image:.*|image: madej22/chmury_z2_image:${{ vars.APPVER }}|g' ./deployment.yaml
+          git diff --quiet && git diff --staged --quiet || git commit -am 'cloud app updated to version: ${{ vars.APPVER }}'
           git push origin main
